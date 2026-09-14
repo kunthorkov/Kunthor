@@ -63,12 +63,12 @@ My goal is to use these skills to build products, grow businesses, and create op
 
 <h2>⚡ Current Activity</h2>
 
-<!-- CURRENT_ACTIVITY_START -->
+<h2>🎮 Current Activity</h2>
+
 <div align="center">
-## 🎮 Current Activity
 
 <img
-![PreMiD Activity](https://premid-github-readme.vercel.app/api/activity-card?bg=transparent)
+  src="https://premid-github-readme.vercel.app/api/activity-card?bg=transparent"
   alt="PreMiD Activity"
 />
 
