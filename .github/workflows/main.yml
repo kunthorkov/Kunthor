@@ -9,127 +9,100 @@ permissions:
   contents: write
 
 jobs:
-  update-activity:
+  update:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repository
+      - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Get latest GitHub activity
+      - name: Update activity
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           python - <<'PY'
-          import json
           import urllib.request
-          import os
+          import json
           import re
-          from datetime import datetime
+          from datetime import datetime, timezone
 
           username = "kunthorkov"
 
-          url = f"https://api.github.com/users/{username}/events/public?per_page=20"
+          url = f"https://api.github.com/users/{username}/events/public"
 
           request = urllib.request.Request(
               url,
               headers={
                   "Accept": "application/vnd.github+json",
-                  "Authorization": f"Bearer {os.environ['GH_TOKEN']}",
-                  "X-GitHub-Api-Version": "2026-03-10"
+                  "Authorization": "Bearer ${{ secrets.GITHUB_TOKEN }}"
               }
           )
 
           with urllib.request.urlopen(request) as response:
               events = json.load(response)
 
-          activity = "No recent public activity."
+          activity = "📚 Currently learning and building new projects."
 
           for event in events:
               event_type = event.get("type")
               repo = event.get("repo", {}).get("name", "")
-              payload = event.get("payload", {})
 
               if event_type == "PushEvent":
-                  commits = payload.get("commits", [])
-                  count = len(commits)
-
-                  if count == 1:
-                      activity = f"💻 Pushed 1 commit to `{repo}`"
-                  else:
-                      activity = f"💻 Pushed {count} commits to `{repo}`"
-
+                  commits = event.get("payload", {}).get("commits", [])
+                  activity = f"💻 Pushed {len(commits)} commit(s) to `{repo}`"
                   break
 
-              elif event_type == "CreateEvent":
-                  ref_type = payload.get("ref_type", "repository")
-                  activity = f"🚀 Created a new {ref_type} in `{repo}`"
+              if event_type == "CreateEvent":
+                  activity = f"🚀 Created something new in `{repo}`"
                   break
 
-              elif event_type == "PullRequestEvent":
-                  action = payload.get("action", "updated")
+              if event_type == "PullRequestEvent":
+                  action = event.get("payload", {}).get("action", "updated")
                   activity = f"🔀 {action.capitalize()} a pull request in `{repo}`"
                   break
 
-              elif event_type == "IssuesEvent":
-                  action = payload.get("action", "updated")
+              if event_type == "IssuesEvent":
+                  action = event.get("payload", {}).get("action", "updated")
                   activity = f"🐛 {action.capitalize()} an issue in `{repo}`"
                   break
 
-              elif event_type == "WatchEvent":
+              if event_type == "WatchEvent":
                   activity = f"⭐ Starred `{repo}`"
                   break
 
-              elif event_type == "ForkEvent":
+              if event_type == "ForkEvent":
                   activity = f"🍴 Forked `{repo}`"
                   break
 
-              elif event_type == "PublicEvent":
-                  activity = f"🌍 Made `{repo}` public"
-                  break
+          now = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
 
-          now = datetime.utcnow().strftime("%Y-%m-%d %H:%M UTC")
-
-          new_content = f"""<!-- CURRENT_ACTIVITY_START -->
-### ⚡ Current Activity
+          new_section = f"""<!-- CURRENT_ACTIVITY_START -->
+### 🔥 Latest GitHub Activity
 
 > {activity}
 
 _Last updated: {now}_
-<!-- CURRENT_ACTIVITY_END -->
-"""
+<!-- CURRENT_ACTIVITY_END -->"""
 
-          with open("activity.md", "w", encoding="utf-8") as file:
-              file.write(new_content)
-
-          print(activity)
-          PY
-
-      - name: Update README
-        run: |
-          python - <<'PY'
-          import re
-
-          with open("README.md", "r", encoding="utf-8") as file:
-              readme = file.read()
-
-          with open("activity.md", "r", encoding="utf-8") as file:
-              activity = file.read().strip()
+          with open("README.md", "r", encoding="utf-8") as f:
+              readme = f.read()
 
           pattern = r"<!-- CURRENT_ACTIVITY_START -->.*?<!-- CURRENT_ACTIVITY_END -->"
 
-          if re.search(pattern, readme, flags=re.DOTALL):
+          if re.search(pattern, readme, re.DOTALL):
               readme = re.sub(
                   pattern,
-                  activity,
+                  new_section,
                   readme,
                   flags=re.DOTALL
               )
           else:
-              readme += "\n\n" + activity + "\n"
+              readme += "\n\n" + new_section + "\n"
 
-          with open("README.md", "w", encoding="utf-8") as file:
-              file.write(readme)
+          with open("README.md", "w", encoding="utf-8") as f:
+              f.write(readme)
+
+          print(activity)
           PY
 
       - name: Commit changes
@@ -140,7 +113,7 @@ _Last updated: {now}_
           git add README.md
 
           if git diff --cached --quiet; then
-            echo "No changes to commit."
+            echo "No changes"
           else
             git commit -m "chore: update current activity"
             git push
