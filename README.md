@@ -249,16 +249,6 @@ Automation systems for monitoring marketing updates, processing information with
 
 ---
 
-## 🐍 My Contribution Snake
-
-<div align="center">
-
-<img src="https://raw.githubusercontent.com/kunthorkov/kunthorkov/output/github-contribution-grid-snake.svg" alt="GitHub Contribution Snake" />
-
-</div>
-
----
-
 ## 🎯 My Goals
 
 ### 2026
