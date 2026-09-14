@@ -9,21 +9,21 @@ permissions:
   contents: write
 
 jobs:
-  update:
+  update-activity:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout
+      - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Update activity
+      - name: Update README
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          python - <<'PY'
-          import urllib.request
+          python <<'PY'
           import json
           import re
+          import urllib.request
           from datetime import datetime, timezone
 
           username = "kunthorkov"
@@ -34,74 +34,83 @@ jobs:
               url,
               headers={
                   "Accept": "application/vnd.github+json",
-                  "Authorization": "Bearer ${{ secrets.GITHUB_TOKEN }}"
+                  "Authorization": f"Bearer {__import__('os').environ['GH_TOKEN']}",
+                  "X-GitHub-Api-Version": "2022-11-28"
               }
           )
 
-          with urllib.request.urlopen(request) as response:
-              events = json.load(response)
+          try:
+              with urllib.request.urlopen(request) as response:
+                  events = json.load(response)
+          except Exception as error:
+              print("Could not get GitHub activity:", error)
+              events = []
 
           activity = "📚 Currently learning and building new projects."
 
           for event in events:
               event_type = event.get("type")
               repo = event.get("repo", {}).get("name", "")
+              payload = event.get("payload", {})
 
               if event_type == "PushEvent":
-                  commits = event.get("payload", {}).get("commits", [])
-                  activity = f"💻 Pushed {len(commits)} commit(s) to `{repo}`"
+                  commits = payload.get("commits", [])
+                  count = len(commits)
+                  activity = f"💻 Pushed {count} commit(s) to `{repo}`"
                   break
 
-              if event_type == "CreateEvent":
-                  activity = f"🚀 Created something new in `{repo}`"
+              elif event_type == "CreateEvent":
+                  ref_type = payload.get("ref_type", "repository")
+                  activity = f"🚀 Created a new {ref_type} in `{repo}`"
                   break
 
-              if event_type == "PullRequestEvent":
-                  action = event.get("payload", {}).get("action", "updated")
+              elif event_type == "PullRequestEvent":
+                  action = payload.get("action", "updated")
                   activity = f"🔀 {action.capitalize()} a pull request in `{repo}`"
                   break
 
-              if event_type == "IssuesEvent":
-                  action = event.get("payload", {}).get("action", "updated")
+              elif event_type == "IssuesEvent":
+                  action = payload.get("action", "updated")
                   activity = f"🐛 {action.capitalize()} an issue in `{repo}`"
                   break
 
-              if event_type == "WatchEvent":
+              elif event_type == "WatchEvent":
                   activity = f"⭐ Starred `{repo}`"
                   break
 
-              if event_type == "ForkEvent":
+              elif event_type == "ForkEvent":
                   activity = f"🍴 Forked `{repo}`"
                   break
 
           now = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
 
           new_section = f"""<!-- CURRENT_ACTIVITY_START -->
-### 🔥 Latest GitHub Activity
+          ### 🔥 Latest GitHub Activity
 
-> {activity}
+          > {activity}
 
-_Last updated: {now}_
-<!-- CURRENT_ACTIVITY_END -->"""
+          _Last updated: {now}_
+          <!-- CURRENT_ACTIVITY_END -->"""
 
-          with open("README.md", "r", encoding="utf-8") as f:
-              readme = f.read()
+          with open("README.md", "r", encoding="utf-8") as file:
+              readme = file.read()
 
           pattern = r"<!-- CURRENT_ACTIVITY_START -->.*?<!-- CURRENT_ACTIVITY_END -->"
 
           if re.search(pattern, readme, re.DOTALL):
               readme = re.sub(
                   pattern,
-                  new_section,
+                  new_section.strip(),
                   readme,
                   flags=re.DOTALL
               )
           else:
-              readme += "\n\n" + new_section + "\n"
+              readme += "\n\n" + new_section.strip() + "\n"
 
-          with open("README.md", "w", encoding="utf-8") as f:
-              f.write(readme)
+          with open("README.md", "w", encoding="utf-8") as file:
+              file.write(readme)
 
+          print("Activity updated:")
           print(activity)
           PY
 
@@ -113,7 +122,7 @@ _Last updated: {now}_
           git add README.md
 
           if git diff --cached --quiet; then
-            echo "No changes"
+            echo "No changes to commit."
           else
             git commit -m "chore: update current activity"
             git push
