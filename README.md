@@ -61,6 +61,16 @@ My goal is to use these skills to build products, grow businesses, and create op
 
 ---
 
+<h2>⚡ Current Activity</h2>
+
+<!-- CURRENT_ACTIVITY_START -->
+### 🔥 Latest GitHub Activity
+
+> Loading latest GitHub activity...
+
+_Last updated: waiting for GitHub Actions_
+<!-- CURRENT_ACTIVITY_END -->
+
 ## 🚗 Khmer Depot
 
 **Khmer Depot** is one of my main business projects.
