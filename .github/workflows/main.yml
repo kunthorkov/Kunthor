@@ -1,0 +1,147 @@
+name: Update Current Activity
+
+on:
+  schedule:
+    - cron: "0 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  update-activity:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Get latest GitHub activity
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          python - <<'PY'
+          import json
+          import urllib.request
+          import os
+          import re
+          from datetime import datetime
+
+          username = "kunthorkov"
+
+          url = f"https://api.github.com/users/{username}/events/public?per_page=20"
+
+          request = urllib.request.Request(
+              url,
+              headers={
+                  "Accept": "application/vnd.github+json",
+                  "Authorization": f"Bearer {os.environ['GH_TOKEN']}",
+                  "X-GitHub-Api-Version": "2026-03-10"
+              }
+          )
+
+          with urllib.request.urlopen(request) as response:
+              events = json.load(response)
+
+          activity = "No recent public activity."
+
+          for event in events:
+              event_type = event.get("type")
+              repo = event.get("repo", {}).get("name", "")
+              payload = event.get("payload", {})
+
+              if event_type == "PushEvent":
+                  commits = payload.get("commits", [])
+                  count = len(commits)
+
+                  if count == 1:
+                      activity = f"💻 Pushed 1 commit to `{repo}`"
+                  else:
+                      activity = f"💻 Pushed {count} commits to `{repo}`"
+
+                  break
+
+              elif event_type == "CreateEvent":
+                  ref_type = payload.get("ref_type", "repository")
+                  activity = f"🚀 Created a new {ref_type} in `{repo}`"
+                  break
+
+              elif event_type == "PullRequestEvent":
+                  action = payload.get("action", "updated")
+                  activity = f"🔀 {action.capitalize()} a pull request in `{repo}`"
+                  break
+
+              elif event_type == "IssuesEvent":
+                  action = payload.get("action", "updated")
+                  activity = f"🐛 {action.capitalize()} an issue in `{repo}`"
+                  break
+
+              elif event_type == "WatchEvent":
+                  activity = f"⭐ Starred `{repo}`"
+                  break
+
+              elif event_type == "ForkEvent":
+                  activity = f"🍴 Forked `{repo}`"
+                  break
+
+              elif event_type == "PublicEvent":
+                  activity = f"🌍 Made `{repo}` public"
+                  break
+
+          now = datetime.utcnow().strftime("%Y-%m-%d %H:%M UTC")
+
+          new_content = f"""<!-- CURRENT_ACTIVITY_START -->
+### ⚡ Current Activity
+
+> {activity}
+
+_Last updated: {now}_
+<!-- CURRENT_ACTIVITY_END -->
+"""
+
+          with open("activity.md", "w", encoding="utf-8") as file:
+              file.write(new_content)
+
+          print(activity)
+          PY
+
+      - name: Update README
+        run: |
+          python - <<'PY'
+          import re
+
+          with open("README.md", "r", encoding="utf-8") as file:
+              readme = file.read()
+
+          with open("activity.md", "r", encoding="utf-8") as file:
+              activity = file.read().strip()
+
+          pattern = r"<!-- CURRENT_ACTIVITY_START -->.*?<!-- CURRENT_ACTIVITY_END -->"
+
+          if re.search(pattern, readme, flags=re.DOTALL):
+              readme = re.sub(
+                  pattern,
+                  activity,
+                  readme,
+                  flags=re.DOTALL
+              )
+          else:
+              readme += "\n\n" + activity + "\n"
+
+          with open("README.md", "w", encoding="utf-8") as file:
+              file.write(readme)
+          PY
+
+      - name: Commit changes
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          git add README.md
+
+          if git diff --cached --quiet; then
+            echo "No changes to commit."
+          else
+            git commit -m "chore: update current activity"
+            git push
+          fi
