@@ -1,0 +1,19 @@
+name: Update Activity
+
+on:
+  workflow_dispatch:
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Update README
+        run: |
+          echo "Current Activity"
+          echo "Updated automatically by GitHub Actions"
