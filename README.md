@@ -64,7 +64,14 @@ My goal is to use these skills to build products, grow businesses, and create op
 <h2>⚡ Current Activity</h2>
 
 <!-- CURRENT_ACTIVITY_START -->
-### 🔥 Latest GitHub Activity
+<div align="center">
+
+<img
+  src="https://premid-github-readme.vercel.app/api/activity-card?bg=transparent"
+  alt="PreMiD Activity"
+/>
+
+</div>
 
 > 💻 Push in `kunthorkov/kunthorkov`
 
